@@ -25,11 +25,10 @@ mod day_01;
 // mod day_23;
 // mod day_24;
 // mod day_25;
-mod utils;
 
 fn main() {
     let mut args = env::args();
-    let _ = args.next().unwrap();
+    let _name = args.next().unwrap();
     let day = args.next().unwrap().parse::<u32>().unwrap();
     let star = args.next().unwrap().parse::<u32>().unwrap();
     let filename = args.next().unwrap();
