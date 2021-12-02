@@ -1,7 +1,7 @@
 use std::{env, fs::File, io::Read};
 
 mod day_01;
-// mod day_02;
+mod day_02;
 // mod day_03;
 // mod day_04;
 // mod day_05;
@@ -40,8 +40,8 @@ fn main() {
     let func = match (day, star) {
         (1, 1) => day_01::star_1,
         (1, 2) => day_01::star_2,
-        // (2, 1) => day_02::star_1,
-        // (2, 2) => day_02::star_2,
+        (2, 1) => day_02::star_1,
+        (2, 2) => day_02::star_2,
         // (3, 1) => day_03::star_1,
         // (3, 2) => day_03::star_2,
         // (4, 1) => day_04::star_1,
