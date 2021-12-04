@@ -3,7 +3,7 @@ use std::ops::Not;
 
 pub fn star_1(data: String) {
     let nums = parse(&data);
-    let mut accum = vec![0i64; nums[0].len() as usize];
+    let mut accum = vec![0_i64; nums[0].len() as usize];
     for num in nums {
         for (i, bit) in num.bits().enumerate() {
             accum[i] += match bit {
@@ -15,7 +15,7 @@ pub fn star_1(data: String) {
     let gamma = accum
         .iter()
         .map(|b| if *b > 0 { 1 } else { 0 })
-        .fold(Number::default(), |acc, bit| acc.push_bit(bit));
+        .fold(Number::default(), Number::push_bit);
     let epsilon = !gamma;
     let gamma: u64 = gamma.into();
     let epsilon: u64 = epsilon.into();
@@ -24,10 +24,8 @@ pub fn star_1(data: String) {
 }
 
 pub fn star_2(data: String) {
-    let nums = parse(&data);
-
-    fn part(nums: &Vec<Number>, flip: bool) -> u64 {
-        let mut nums = nums.clone();
+    fn part(nums: &[Number], flip: bool) -> u64 {
+        let mut nums = nums.to_owned();
         for i in 0..nums[0].len() {
             let (zero, one): (Vec<Number>, _) = nums.iter().partition(|num| num.bit(i) == 0);
             let pick_zero = zero.len() > one.len();
@@ -38,6 +36,8 @@ pub fn star_2(data: String) {
         }
         nums[0].into()
     }
+
+    let nums = parse(&data);
 
     let oxy = part(&nums, false);
     let co2 = part(&nums, true);
@@ -113,7 +113,7 @@ impl Not for Number {
 fn number(input: &str) -> IResult<&str, Number> {
     use nom::multi::fold_many1;
 
-    fold_many1(bit, Number::default, |acc, bit| acc.push_bit(bit))(input)
+    fold_many1(bit, Number::default, Number::push_bit)(input)
 }
 
 fn bit(input: &str) -> IResult<&str, u64> {
