@@ -28,15 +28,16 @@ impl Fish {
     }
 
     fn evolve(mut self, mut days: u64) -> Self {
-        while days > 0 {
-            if days >= 9 {
-                self = self.step_9();
-                days -= 9;
-            } else {
-                self = self.step();
-                days -= 1;
-            }
+        // Step over days in 9-day cycles.
+        for _ in 0..(days / 9) {
+            self = self.step_9();
         }
+
+        // Single step the remaining days.
+        for _ in 0..(days % 9) {
+            self = self.step();
+        }
+
         self
     }
 
