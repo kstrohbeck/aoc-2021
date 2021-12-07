@@ -27,7 +27,7 @@ impl Fish {
         Self(arr)
     }
 
-    fn evolve(mut self, mut days: u64) -> Self {
+    fn evolve(mut self, days: u64) -> Self {
         // Step over days in 9-day cycles.
         for _ in 0..(days / 9) {
             self = self.step_9();
