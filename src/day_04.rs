@@ -1,3 +1,4 @@
+use super::utils::sep_array_5;
 use nom::{
     character::complete::{multispace1, u8 as u8_},
     multi::separated_list1,
@@ -96,40 +97,6 @@ fn bingo_row(input: &str) -> IResult<&str, [u8; 5]> {
     };
 
     preceded(space0, sep_array_5(space1, u8_))(input)
-}
-
-fn sep_array_5<I, O, O2, E, F, G>(
-    mut sep: G,
-    mut parser: F,
-) -> impl FnMut(I) -> IResult<I, [O; 5], E>
-where
-    F: nom::Parser<I, O, E>,
-    G: nom::Parser<I, O2, E>,
-    E: nom::error::ParseError<I>,
-{
-    use std::mem::MaybeUninit;
-
-    move |mut input| {
-        // Safe because we aren't actually able to access any uninitialized memory.
-        let mut array: [MaybeUninit<O>; 5] = unsafe { MaybeUninit::uninit().assume_init() };
-
-        for (i, cell) in array.iter_mut().enumerate() {
-            if i != 0 {
-                let (inp, _) = sep.parse(input)?;
-                input = inp;
-            }
-            let (inp, u) = parser.parse(input)?;
-            input = inp;
-            cell.write(u);
-        }
-
-        // Safe because:
-        // - [MaybeUninit<T>; n] and [T; n] are guaranteed to be the same size
-        // - each MaybeUninit<T> in the array has been initialized
-        let array = unsafe { array.as_ptr().cast::<[O; 5]>().read() };
-
-        Ok((input, array))
-    }
 }
 
 #[cfg(test)]
