@@ -26,7 +26,7 @@ pub fn star_2(data: String) {
 }
 
 fn parse(input: &str) -> (Vec<u8>, Vec<Bingo>) {
-    document(input).unwrap().1
+    super::utils::parse(document, input)
 }
 
 fn document(input: &str) -> IResult<&str, (Vec<u8>, Vec<Bingo>)> {

@@ -46,13 +46,11 @@ pub fn star_2(data: String) {
 }
 
 fn parse(data: &str) -> Vec<Number> {
-    numbers(data).unwrap().1
+    super::utils::parse(numbers, data)
 }
 
 fn numbers(input: &str) -> IResult<&str, Vec<Number>> {
-    use nom::{character::complete::line_ending, multi::separated_list0};
-
-    separated_list0(line_ending, number)(input)
+    super::utils::lines(number)(input)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -47,16 +47,17 @@ pub fn star_2(data: String) {
 }
 
 fn parse(input: &str) -> Vec<Vec<Delim>> {
-    lines(input).unwrap().1
+    super::utils::parse(lines, input)
 }
 
 fn lines(input: &str) -> IResult<&str, Vec<Vec<Delim>>> {
-    use nom::{
-        character::complete::multispace1,
-        multi::{many1, separated_list1},
-    };
+    super::utils::lines(line)(input)
+}
 
-    separated_list1(multispace1, many1(delim))(input)
+fn line(input: &str) -> IResult<&str, Vec<Delim>> {
+    use nom::multi::many1;
+
+    many1(delim)(input)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

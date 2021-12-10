@@ -34,7 +34,11 @@ pub fn star_2(data: String) {
 }
 
 fn parse(data: &str) -> Vec<Command> {
-    commands(data).unwrap().1
+    super::utils::parse(commands, data)
+}
+
+fn commands(input: &str) -> IResult<&str, Vec<Command>> {
+    super::utils::lines(command)(input)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -56,12 +60,6 @@ fn command(input: &str) -> IResult<&str, Command> {
             distance: dis,
         }
     })(input)
-}
-
-fn commands(input: &str) -> IResult<&str, Vec<Command>> {
-    use nom::{character::complete::line_ending, multi::separated_list0};
-
-    separated_list0(line_ending, command)(input)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

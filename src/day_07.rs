@@ -83,7 +83,7 @@ where
 }
 
 fn parse(input: &str) -> Vec<u64> {
-    crabs(input).unwrap().1
+    super::utils::parse(crabs, input)
 }
 
 fn crabs(input: &str) -> IResult<&str, Vec<u64>> {

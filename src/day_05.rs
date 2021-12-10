@@ -30,13 +30,11 @@ where
 }
 
 fn parse(input: &str) -> Vec<Line> {
-    lines(input).unwrap().1
+    super::utils::parse(lines, input)
 }
 
 fn lines(input: &str) -> IResult<&str, Vec<Line>> {
-    use nom::{character::complete::multispace1, multi::separated_list0};
-
-    separated_list0(multispace1, line)(input)
+    super::utils::lines(line)(input)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -114,7 +114,7 @@ pub fn star_2(data: String) {
 }
 
 fn parse(input: &str) -> Vec2d<u8> {
-    vec2d_u8(input).unwrap().1
+    super::utils::parse(vec2d_u8, input)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

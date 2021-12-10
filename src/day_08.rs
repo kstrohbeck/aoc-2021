@@ -17,13 +17,11 @@ pub fn star_2(data: String) {
 }
 
 fn parse(input: &str) -> Vec<Entry> {
-    entries(input).unwrap().1
+    super::utils::parse(entries, input)
 }
 
 fn entries(input: &str) -> IResult<&str, Vec<Entry>> {
-    use nom::{character::complete::multispace0, multi::separated_list0};
-
-    separated_list0(multispace0, entry)(input)
+    super::utils::lines(entry)(input)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

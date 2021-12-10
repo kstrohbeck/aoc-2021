@@ -15,6 +15,10 @@ fn print_fish_count(data: String, days: u64) {
     println!("{}", fish.count());
 }
 
+fn parse(input: &str) -> Vec<u64> {
+    super::utils::parse(fish, input)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Fish([u64; 9]);
 
@@ -74,10 +78,6 @@ impl Fish {
     fn count(self) -> u64 {
         self.0.iter().sum()
     }
-}
-
-fn parse(input: &str) -> Vec<u64> {
-    fish(input).unwrap().1
 }
 
 fn fish(input: &str) -> IResult<&str, Vec<u64>> {

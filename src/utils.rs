@@ -1,3 +1,26 @@
+use nom::{InputLength, Parser, IResult, Slice, error::ParseError, InputIter, Compare};
+use std::ops::{Range, RangeFrom, RangeTo};
+
+pub fn lines<I, O, E, F>(parser: F) -> impl FnMut(I) -> IResult<I, Vec<O>, E>
+where
+    I: Clone + InputLength + InputIter + Compare<&'static str>,
+    I: Slice<Range<usize>> + Slice<RangeFrom<usize>> + Slice<RangeTo<usize>>,
+    F: Parser<I, O, E>,
+    E: ParseError<I>,
+{
+    use nom::{multi::separated_list0, character::complete::line_ending};
+
+    separated_list0(line_ending, parser)
+}
+
+pub fn parse<I, O, E, F>(mut parser: F, input: I) -> O
+where
+    F: Parser<I, O, E>,
+    nom::Err<E>: std::fmt::Debug,
+{
+    parser.parse(input).unwrap().1
+}
+
 macro_rules! sep_arrays {
     ($( $name:ident, $num:literal ),*) => {
         $(
