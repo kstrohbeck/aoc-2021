@@ -138,7 +138,7 @@ impl Entry {
             sum += digit
                 .transform(&seg_map)
                 .try_to_u8()
-                .ok_or_else(|| "Digit not a real digit")? as u64;
+                .ok_or("Digit not a real digit")? as u64;
         }
         Ok(sum)
     }

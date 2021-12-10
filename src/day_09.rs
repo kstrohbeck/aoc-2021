@@ -106,7 +106,7 @@ pub fn star_2(data: String) {
         })
         .collect::<Vec<_>>();
 
-    basin_sizes.sort();
+    basin_sizes.sort_unstable();
     basin_sizes.reverse();
 
     let product = basin_sizes.iter().take(3).product::<usize>();
@@ -196,7 +196,7 @@ impl<T> Vec2d<T> {
         [Self::left, Self::right, Self::up, Self::down]
             .iter()
             .map(move |f| f(self, coord))
-            .filter_map(|c| c)
+            .flatten()
     }
 }
 
@@ -275,7 +275,7 @@ fn vec2d_u8(input: &str) -> IResult<&str, Vec2d<u8>> {
             }
             b
         }),
-        |b| b.build(),
+        Vec2dBuilder::build,
     )(input)
 }
 
