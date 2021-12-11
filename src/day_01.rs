@@ -20,7 +20,7 @@ fn parse(data: &str) -> Vec<u32> {
 
 fn numbers(input: &str) -> IResult<&str, Vec<u32>> {
     use super::utils::lines;
-    use nom::character::complete::{u32 as u32_};
+    use nom::character::complete::u32 as u32_;
 
     lines(u32_)(input)
 }

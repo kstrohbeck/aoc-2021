@@ -195,8 +195,7 @@ impl<T> Vec2d<T> {
     ) -> impl Iterator<Item = (usize, usize)> + '_ {
         [Self::left, Self::right, Self::up, Self::down]
             .iter()
-            .map(move |f| f(self, coord))
-            .flatten()
+            .filter_map(move |f| f(self, coord))
     }
 }
 

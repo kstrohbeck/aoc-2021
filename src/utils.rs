@@ -1,4 +1,4 @@
-use nom::{InputLength, Parser, IResult, Slice, error::ParseError, InputIter, Compare};
+use nom::{error::ParseError, Compare, IResult, InputIter, InputLength, Parser, Slice};
 use std::ops::{Range, RangeFrom, RangeTo};
 
 pub fn lines<I, O, E, F>(parser: F) -> impl FnMut(I) -> IResult<I, Vec<O>, E>
@@ -8,7 +8,7 @@ where
     F: Parser<I, O, E>,
     E: ParseError<I>,
 {
-    use nom::{multi::separated_list0, character::complete::line_ending};
+    use nom::{character::complete::line_ending, multi::separated_list0};
 
     separated_list0(line_ending, parser)
 }
