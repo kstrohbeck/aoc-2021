@@ -45,19 +45,21 @@ fn step(mut octos: [[u8; 10]; 10]) -> ([[u8; 10]; 10], usize) {
         let mut new_octos = octos;
 
         for (row, col) in iproduct!(0..10, 0..10) {
+            let octo = &mut new_octos[row][col];
+
             if octos[row][col] > 9 {
-                new_octos[row][col] = 0;
+                *octo = 0;
             }
 
-            if new_octos[row][col] == 0 {
+            if *octo == 0 {
                 continue;
             }
 
             let flash_adjust = neighbors(row, col, 10, 10)
                 .filter(|(row, col)| octos[*row][*col] > 9)
                 .count();
-            new_octos[row][col] += flash_adjust as u8;
-            if new_octos[row][col] > 9 {
+            *octo += flash_adjust as u8;
+            if *octo > 9 {
                 num_flashes += 1;
                 is_flashing = true;
             }
