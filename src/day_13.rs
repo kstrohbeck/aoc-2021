@@ -1,3 +1,4 @@
+use super::utils::Vec2d;
 use nom::{
     character::complete::{char as char_, u64 as u64_},
     combinator::map,
@@ -36,24 +37,22 @@ fn print_coords(coords: &HashSet<Coord>) {
     let mut max_x = 0;
     let mut max_y = 0;
     for coord in coords {
-        if coord.x > max_x {
-            max_x = coord.x;
-        }
-        if coord.y > max_y {
-            max_y = coord.y;
-        }
+        max_x = max_x.max(coord.x);
+        max_y = max_y.max(coord.y);
     }
-    let mut image = vec![vec![' '; (max_x as usize) + 1]; (max_y as usize) + 1];
+    let mut image = Vec2d::repeat(' ', (max_x + 1) as usize, (max_y + 1) as usize);
 
     for coord in coords {
-        image[coord.y as usize][coord.x as usize] = '#';
+        image[(coord.x as usize, coord.y as usize)] = '#';
     }
 
-    for row in image {
-        for col in row {
-            print!("{}", col);
+    let line_ends = image.all_coords().map(|(x, _)| x == max_x as usize);
+
+    for (c, is_end) in image.iter().zip(line_ends) {
+        print!("{}", c);
+        if is_end {
+            println!();
         }
-        println!("");
     }
 }
 
