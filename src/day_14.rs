@@ -28,16 +28,18 @@ fn apply_rules(template: &str, rules: Rules, num_times: usize) -> u64 {
         *pair_counts.entry((l, r)).or_insert(0) += 1;
     }
 
-    for _ in 0..num_times {
-        let mut new_pair_counts = HashMap::new();
+    let mut new_pair_counts = HashMap::new();
 
-        for ((l, r), count) in pair_counts {
+    for _ in 0..num_times {
+        new_pair_counts.clear();
+
+        for (&(l, r), &count) in &pair_counts {
             let c = rules[&(l, r)];
             *new_pair_counts.entry((l, c)).or_insert(0) += count;
             *new_pair_counts.entry((c, r)).or_insert(0) += count;
         }
 
-        pair_counts = new_pair_counts;
+        std::mem::swap(&mut pair_counts, &mut new_pair_counts);
     }
 
     let mut letters = HashMap::new();
