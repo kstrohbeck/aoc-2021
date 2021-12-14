@@ -28,7 +28,7 @@ fn apply_rules(template: &str, rules: Rules, num_times: usize) -> u64 {
         *pair_counts.entry((l, r)).or_insert(0) += 1;
     }
 
-    for _ in 0..40 {
+    for _ in 0..num_times {
         let mut new_pair_counts = HashMap::new();
 
         for ((l, r), count) in pair_counts {
