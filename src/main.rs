@@ -13,7 +13,7 @@ mod day_10;
 mod day_11;
 mod day_12;
 mod day_13;
-// mod day_14;
+mod day_14;
 // mod day_15;
 // mod day_16;
 // mod day_17;
@@ -65,8 +65,8 @@ fn main() {
         (12, 2) => day_12::star_2,
         (13, 1) => day_13::star_1,
         (13, 2) => day_13::star_2,
-        // (14, 1) => day_14::star_1,
-        // (14, 2) => day_14::star_2,
+        (14, 1) => day_14::star_1,
+        (14, 2) => day_14::star_2,
         // (15, 1) => day_15::star_1,
         // (15, 2) => day_15::star_2,
         // (16, 1) => day_16::star_1,
