@@ -18,26 +18,23 @@ pub fn star_2(data: String) {
     println!("{}", count);
 }
 
-fn apply_rules(template: &str, rules: HashMap<(char, char), char>, num_times: usize) -> u64 {
+fn apply_rules(template: &str, rules: Rules, num_times: usize) -> u64 {
+    let rules = rules.0;
     let last_char = template.chars().last().unwrap();
-    let mut pair_counts = rules
-        .keys()
-        .zip(std::iter::repeat(0))
-        .collect::<HashMap<_, _>>();
+
+    let mut pair_counts = HashMap::new();
 
     for (l, r) in template.chars().tuple_windows() {
-        *pair_counts.get_mut(&(l, r)).unwrap() += 1;
+        *pair_counts.entry((l, r)).or_insert(0) += 1;
     }
 
     for _ in 0..40 {
-        let mut new_pair_counts = rules
-            .keys()
-            .zip(std::iter::repeat(0))
-            .collect::<HashMap<_, _>>();
-        for ((l, r), c) in &rules {
-            let count = pair_counts[&(*l, *r)];
-            *new_pair_counts.get_mut(&(*l, *c)).unwrap() += count;
-            *new_pair_counts.get_mut(&(*c, *r)).unwrap() += count;
+        let mut new_pair_counts = HashMap::new();
+
+        for ((l, r), count) in pair_counts {
+            let c = rules[&(l, r)];
+            *new_pair_counts.entry((l, c)).or_insert(0) += count;
+            *new_pair_counts.entry((c, r)).or_insert(0) += count;
         }
 
         pair_counts = new_pair_counts;
@@ -47,28 +44,20 @@ fn apply_rules(template: &str, rules: HashMap<(char, char), char>, num_times: us
     for ((l, _), count) in pair_counts {
         *letters.entry(l).or_insert(0) += count;
     }
-    *letters.entry(&last_char).or_insert(0) += 1;
+    *letters.entry(last_char).or_insert(0) += 1;
 
-    let mut max_count = 0;
-    let mut min_count = u64::MAX;
-
-    for &count in letters.values() {
-        if count > max_count {
-            max_count = count;
-        }
-        if count < min_count {
-            min_count = count;
-        }
-    }
+    let (min_count, max_count) = letters
+        .values()
+        .fold((u64::MAX, 0), |(min, max), &c| (min.min(c), max.max(c)));
 
     max_count - min_count
 }
 
-fn parse(input: &str) -> (&str, HashMap<(char, char), char>) {
+fn parse(input: &str) -> (&str, Rules) {
     super::utils::parse(items, input)
 }
 
-fn items(input: &str) -> IResult<&str, (&str, HashMap<(char, char), char>)> {
+fn items(input: &str) -> IResult<&str, (&str, Rules)> {
     use nom::character::complete::multispace1;
 
     separated_pair(template, multispace1, rules)(input)
@@ -80,16 +69,31 @@ fn template(input: &str) -> IResult<&str, &str> {
     terminated(not_line_ending, line_ending)(input)
 }
 
-fn rules(input: &str) -> IResult<&str, HashMap<(char, char), char>> {
-    use nom::{combinator::opt, multi::fold_many1};
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Rules(HashMap<(char, char), char>);
 
-    fold_many1(
-        terminated(rule, opt(line_ending)),
-        HashMap::new,
-        |mut map, (left, right)| {
-            map.insert(left, right);
-            map
-        },
+impl Rules {
+    fn rule_pairs(&self, pair: (char, char)) -> Option<((char, char), (char, char))> {
+        self.0.get(&pair).map(|&c| ((pair.0, c), (c, pair.1)))
+    }
+}
+
+fn rules(input: &str) -> IResult<&str, Rules> {
+    use nom::{
+        combinator::{map, opt},
+        multi::fold_many1,
+    };
+
+    map(
+        fold_many1(
+            terminated(rule, opt(line_ending)),
+            HashMap::new,
+            |mut map, (left, right)| {
+                map.insert(left, right);
+                map
+            },
+        ),
+        Rules,
     )(input)
 }
 
