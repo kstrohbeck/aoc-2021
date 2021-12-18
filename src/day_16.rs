@@ -1,4 +1,9 @@
-use nom::{bits::complete::take, IResult};
+use nom::{
+    combinator::map,
+    error::{Error, ErrorKind, ParseError},
+    Err as NomErr, IResult, InputIter, InputLength, Slice,
+};
+use std::ops::{AddAssign, RangeFrom, RangeTo, Shl, Shr};
 
 pub fn star_1(data: String) {
     let packet = parse(&data);
@@ -16,7 +21,7 @@ fn parse(data: &str) -> Packet {
     use super::utils::parse;
 
     let hex = parse(hex_string, data);
-    parse(packet, (&hex[..], 0)).0
+    parse(packet, BitSlice::from(&hex[..]))
 }
 
 fn hex_string(mut input: &str) -> IResult<&str, Vec<u8>> {
@@ -72,10 +77,13 @@ impl Packet {
     }
 }
 
-fn packet(input: (&[u8], usize)) -> IResult<(&[u8], usize), (Packet, usize)> {
-    let (input, version) = take(3u8)(input)?;
-    let (input, (data, len)) = packet_data(input)?;
-    Ok((input, (Packet { version, data }, len + 3)))
+fn packet(input: BitSlice<&[u8]>) -> IResult<BitSlice<&[u8]>, Packet> {
+    use nom::sequence::pair;
+
+    map(pair(num(3), packet_data), |(version, data)| Packet {
+        version,
+        data,
+    })(input)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -157,85 +165,177 @@ impl From<u8> for OperatorType {
     }
 }
 
-fn packet_data(input: (&[u8], usize)) -> IResult<(&[u8], usize), (PacketData, usize)> {
-    let (input, type_id): (_, u8) = take(3u8)(input)?;
+fn packet_data(input: BitSlice<&[u8]>) -> IResult<BitSlice<&[u8]>, PacketData> {
+    println!("packet data input: {:?}", input);
+    let (input, type_id): (_, u8) = num(3)(input)?;
     if type_id == 4 {
-        let (input, (val, len)) = literal(input)?;
-        Ok((input, (PacketData::Literal(val), len + 3)))
+        map(literal, PacketData::Literal)(input)
     } else {
         let op_type = OperatorType::from(type_id);
-        let (input, (subpackets, len)) = subpackets(input)?;
+        let (input, subpackets) = subpackets(input)?;
         Ok((
             input,
-            (
-                PacketData::Operator {
-                    op_type,
-                    subpackets,
-                },
-                len + 3,
-            ),
+            PacketData::Operator {
+                op_type,
+                subpackets,
+            },
         ))
     }
 }
 
-fn literal(mut input: (&[u8], usize)) -> IResult<(&[u8], usize), (usize, usize)> {
-    let mut num = 0;
-    let mut len = 0;
+fn literal(mut input: BitSlice<&[u8]>) -> IResult<BitSlice<&[u8]>, usize> {
+    let mut acc = 0;
     loop {
-        let (inp, bit): (_, u8) = take(1u8)(input)?;
-        let (inp, data): (_, usize) = take(4u8)(inp)?;
+        let (inp, bit): (_, u8) = num(1)(input)?;
+        let (inp, data): (_, usize) = num(4)(inp)?;
         input = inp;
-        num = (num << 4) + data;
-        len += 5;
+        acc = (acc << 4) + data;
         if bit == 0 {
             break;
         }
     }
-    Ok((input, (num, len)))
+    Ok((input, acc))
 }
 
-fn subpackets(input: (&[u8], usize)) -> IResult<(&[u8], usize), (Vec<Packet>, usize)> {
-    let (input, length_type_bit): (_, u8) = take(1u8)(input)?;
+fn subpackets(input: BitSlice<&[u8]>) -> IResult<BitSlice<&[u8]>, Vec<Packet>> {
+    let (input, length_type_bit): (_, u8) = num(1)(input)?;
     if length_type_bit == 0 {
-        let (input, (subpackets, len)) = length_type_0_subpackets(input)?;
-        Ok((input, (subpackets, len + 1)))
+        length_type_0_subpackets(input)
     } else {
-        let (input, (subpackets, len)) = length_type_1_subpackets(input)?;
-        Ok((input, (subpackets, len + 1)))
+        length_type_1_subpackets(input)
     }
 }
 
-fn length_type_0_subpackets(
-    input: (&[u8], usize),
-) -> IResult<(&[u8], usize), (Vec<Packet>, usize)> {
-    let (mut input, len): (_, usize) = take(15u8)(input)?;
-    let mut packets = Vec::new();
-    let mut used = 0;
-    loop {
-        let (inp, (packet, p_len)) = packet(input)?;
-        packets.push(packet);
-        used += p_len;
-        input = inp;
-        if used >= len {
-            break;
+fn length_type_0_subpackets(input: BitSlice<&[u8]>) -> IResult<BitSlice<&[u8]>, Vec<Packet>> {
+    use nom::multi::many1;
+
+    let (input, len) = num(15)(input)?;
+    let (input, subslice) = slice(len)(input)?;
+    let (_, packets) = many1(packet)(subslice)?;
+    Ok((input, packets))
+}
+
+fn length_type_1_subpackets(input: BitSlice<&[u8]>) -> IResult<BitSlice<&[u8]>, Vec<Packet>> {
+    use nom::multi::length_count;
+
+    length_count::<_, _, usize, _, _, _>(num(11), packet)(input)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct BitSlice<I> {
+    input: I,
+    start_offset: usize,
+    end_offset: usize,
+}
+
+impl<I> From<I> for BitSlice<I> {
+    fn from(input: I) -> Self {
+        Self {
+            input,
+            start_offset: 0,
+            end_offset: 0,
         }
     }
-    Ok((input, (packets, used + 15)))
 }
 
-fn length_type_1_subpackets(
-    input: (&[u8], usize),
-) -> IResult<(&[u8], usize), (Vec<Packet>, usize)> {
-    let (mut input, num): (_, usize) = take(11u8)(input)?;
-    let mut packets = Vec::new();
-    let mut used = 0;
-    for _ in 0..num {
-        let (inp, (packet, p_len)) = packet(input)?;
-        packets.push(packet);
-        used += p_len;
-        input = inp;
+impl<I> InputLength for BitSlice<I>
+where
+    I: InputLength,
+{
+    fn input_len(&self) -> usize {
+        self.input.input_len() * 8 - (self.start_offset + self.end_offset)
     }
-    Ok((input, (packets, used + 11)))
+}
+
+fn slice<I, E: ParseError<BitSlice<I>>>(
+    count: usize,
+) -> impl Fn(BitSlice<I>) -> IResult<BitSlice<I>, BitSlice<I>, E>
+where
+    I: Slice<RangeTo<usize>> + Slice<RangeFrom<usize>> + InputLength,
+{
+    move |slice: BitSlice<I>| {
+        if slice.input_len() < count {
+            return Err(NomErr::Error(E::from_error_kind(slice, ErrorKind::Eof)));
+        }
+
+        let split_offset = (count + slice.start_offset) % 8;
+        let num_bytes = (count + slice.start_offset) / 8;
+        let head_bytes = num_bytes + if split_offset != 0 { 1 } else { 0 };
+
+        let head = BitSlice {
+            input: slice.input.slice(..head_bytes),
+            start_offset: slice.start_offset,
+            end_offset: if split_offset == 0 {
+                0
+            } else {
+                8 - split_offset
+            },
+        };
+
+        let rest = BitSlice {
+            input: slice.input.slice(num_bytes..),
+            start_offset: split_offset,
+            end_offset: slice.end_offset,
+        };
+
+        Ok((rest, head))
+    }
+}
+
+fn num<I, O, E: ParseError<BitSlice<I>>>(
+    count: usize,
+) -> impl Fn(BitSlice<I>) -> IResult<BitSlice<I>, O, E>
+where
+    I: Slice<RangeFrom<usize>> + InputIter<Item = u8> + InputLength,
+    O: From<u8> + AddAssign + Shl<usize, Output = O> + Shr<usize, Output = O>,
+{
+    move |slice: BitSlice<I>| {
+        if count == 0 {
+            return Ok((slice, 0u8.into()));
+        }
+
+        if slice.input_len() < count {
+            return Err(NomErr::Error(E::from_error_kind(slice, ErrorKind::Eof)));
+        }
+
+        let mut acc = 0u8.into();
+        let mut offset = slice.start_offset;
+        let mut remaining = count;
+        let mut new_offset = 0;
+
+        let num_bytes = (count + slice.start_offset) / 8;
+
+        for byte in slice.input.iter_elements().take(num_bytes + 1) {
+            if remaining == 0 {
+                break;
+            }
+
+            let val: O = if offset == 0 {
+                byte.into()
+            } else {
+                ((byte << offset) as u8 >> offset).into()
+            };
+
+            if remaining < 8 - offset {
+                acc += val >> (8 - offset - remaining);
+                new_offset = remaining + offset;
+                break;
+            }
+
+            acc += val << (remaining - (8 - offset));
+            remaining -= 8 - offset;
+            offset = 0;
+        }
+
+        Ok((
+            BitSlice {
+                input: slice.input.slice(num_bytes..),
+                start_offset: new_offset,
+                end_offset: slice.end_offset,
+            },
+            acc,
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -250,25 +350,27 @@ mod tests {
 
     #[test]
     fn literal_parses() {
-        let input = (&[0xd2, 0xfe, 0x28][..], 0);
+        let input = BitSlice::from(&[0xd2, 0xfe, 0x28][..]);
         let expected = Packet::literal(6, 2021);
-        assert_eq!(Ok(((&[0x28][..], 5), (expected, 21))), packet(input));
+        let actual = packet(input).unwrap().1;
+        assert_eq!(expected, actual);
     }
 
     #[test]
     fn length_type_0_parses() {
-        let input = (&[0x38, 0x00, 0x6F, 0x45, 0x29, 0x12, 0x00][..], 0);
+        let input = BitSlice::from(&[0x38, 0x00, 0x6F, 0x45, 0x29, 0x12, 0x00][..]);
         let expected = Packet::operator(
             1,
             OperatorType::LessThan,
             vec![Packet::literal(6, 10), Packet::literal(2, 20)],
         );
-        assert_eq!(Ok(((&[0x00][..], 1), (expected, 49))), packet(input));
+        let actual = packet(input).unwrap().1;
+        assert_eq!(expected, actual);
     }
 
     #[test]
     fn length_type_1_parses() {
-        let input = (&[0xEE, 0x00, 0xD4, 0x0C, 0x82, 0x30, 0x60][..], 0);
+        let input = BitSlice::from(&[0xEE, 0x00, 0xD4, 0x0C, 0x82, 0x30, 0x60][..]);
         let expected = Packet::operator(
             7,
             OperatorType::Maximum,
@@ -278,25 +380,97 @@ mod tests {
                 Packet::literal(1, 3),
             ],
         );
-        assert_eq!(Ok(((&[0x60][..], 3), (expected, 51))), packet(input));
+        let actual = packet(input).unwrap().1;
+        assert_eq!(expected, actual);
+    }
+
+    // #[test]
+    // fn test_sums() {
+    //     let inputs = [
+    //         ("C200B40A82", 3),
+    //         ("04005AC33890", 54),
+    //         ("880086C3E88112", 7),
+    //         ("CE00C43D881120", 9),
+    //         ("D8005AC2A8F0", 1),
+    //         ("F600BC2D8F", 0),
+    //         ("9C005AC2F8F0", 0),
+    //         ("9C0141080250320F1802104A08", 1),
+    //     ];
+
+    //     for (input, expected) in inputs {
+    //         let packet = parse(input);
+    //         assert_eq!(expected, packet.eval());
+    //     }
+    // }
+
+    #[test]
+    fn less_than_byte_num_parses() {
+        let input = BitSlice {
+            input: &[0b11000000][..],
+            start_offset: 0,
+            end_offset: 0,
+        };
+        let (rest, n) = num::<&[u8], u8, ()>(3)(input).unwrap();
+        assert_eq!(0b110, n);
+        assert_eq!(
+            BitSlice {
+                input: &[0b11000000][..],
+                start_offset: 3,
+                end_offset: 0,
+            },
+            rest
+        );
     }
 
     #[test]
-    fn test_sums() {
-        let inputs = [
-            ("C200B40A82", 3),
-            ("04005AC33890", 54),
-            ("880086C3E88112", 7),
-            ("CE00C43D881120", 9),
-            ("D8005AC2A8F0", 1),
-            ("F600BC2D8F", 0),
-            ("9C005AC2F8F0", 0),
-            ("9C0141080250320F1802104A08", 1),
-        ];
+    fn slice_offset() {
+        let input = BitSlice {
+            input: &[0, 1, 2, 3][..],
+            start_offset: 6,
+            end_offset: 3,
+        };
+        let (rest, head) = slice::<&[u8], ()>(9)(input).unwrap();
+        assert_eq!(
+            BitSlice {
+                input: &[0, 1][..],
+                start_offset: 6,
+                end_offset: 1,
+            },
+            head
+        );
+        assert_eq!(
+            BitSlice {
+                input: &[1, 2, 3][..],
+                start_offset: 7,
+                end_offset: 3,
+            },
+            rest
+        );
+    }
 
-        for (input, expected) in inputs {
-            let packet = parse(input);
-            assert_eq!(expected, packet.eval());
-        }
+    #[test]
+    fn zero_slice_offset() {
+        let input = BitSlice {
+            input: &[0, 1, 2, 3][..],
+            start_offset: 6,
+            end_offset: 3,
+        };
+        let (rest, head) = slice::<&[u8], ()>(10)(input).unwrap();
+        assert_eq!(
+            BitSlice {
+                input: &[0, 1][..],
+                start_offset: 6,
+                end_offset: 0,
+            },
+            head
+        );
+        assert_eq!(
+            BitSlice {
+                input: &[2, 3][..],
+                start_offset: 0,
+                end_offset: 3,
+            },
+            rest
+        );
     }
 }
