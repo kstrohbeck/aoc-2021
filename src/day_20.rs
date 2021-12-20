@@ -58,20 +58,26 @@ impl Image {
     }
 
     fn step(&self, pixel_map: &[Pixel]) -> Self {
-        let mut builder = ImageBuilder::new();
-        builder.ambient = if self.ambient == Pixel::Light {
-            pixel_map[511]
-        } else {
-            pixel_map[0]
+        let mut image = Image {
+            pixels: HashSet::new(),
+            x_min: self.x_min - 1,
+            x_max: self.x_max + 1,
+            y_min: self.y_min - 1,
+            y_max: self.y_max + 1,
+            ambient: if self.ambient == Pixel::Light {
+                pixel_map[511]
+            } else {
+                pixel_map[0]
+            },
         };
-        for y in (self.y_min - 1)..=(self.y_max + 1) {
-            for x in (self.x_min - 1)..=(self.x_max + 1) {
+        for y in image.y_min..=image.y_max {
+            for x in image.x_min..=image.x_max {
                 if pixel_map[self.coord_to_lookup((x, y))] == Pixel::Light {
-                    builder.set_pixel((x, y));
+                    image.pixels.insert((x, y));
                 }
             }
         }
-        builder.build()
+        image
     }
 
     fn coord_to_lookup(&self, coord: (i64, i64)) -> usize {
