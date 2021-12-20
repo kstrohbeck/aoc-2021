@@ -19,7 +19,7 @@ mod day_16;
 mod day_17;
 mod day_18;
 mod day_19;
-// mod day_20;
+mod day_20;
 // mod day_21;
 // mod day_22;
 // mod day_23;
@@ -77,8 +77,8 @@ fn main() {
         (18, 2) => day_18::star_2,
         (19, 1) => day_19::star_1,
         (19, 2) => day_19::star_2,
-        // (20, 1) => day_20::star_1,
-        // (20, 2) => day_20::star_2,
+        (20, 1) => day_20::star_1,
+        (20, 2) => day_20::star_2,
         // (21, 1) => day_21::star_1,
         // (21, 2) => day_21::star_2,
         // (22, 1) => day_22::star_1,
